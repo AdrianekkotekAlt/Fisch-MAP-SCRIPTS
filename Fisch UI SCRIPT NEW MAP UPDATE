@@ -1,0 +1,168 @@
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+
+local frame = Instance.new("Frame")
+frame.Parent = screenGui
+frame.Size = UDim2.new(0, 580, 0, 340)
+frame.Position = UDim2.new(0.306, 0, 0.242, 0)
+frame.BackgroundTransparency = 0.5
+
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 15)
+uiCorner.Parent = frame
+
+
+local buttonHeight = 0.1 -- Adjusted for better scaling
+local buttonSpacing = 0.15
+
+local autoStuffButton = Instance.new("TextButton")
+autoStuffButton.Parent = frame
+autoStuffButton.Size = UDim2.new(0.8, 0, buttonHeight, 0)
+autoStuffButton.Position = UDim2.new(0.1, 0, 0.1, 0)
+autoStuffButton.Text = "Automatic Stuff"
+
+local infiniteStuffButton = Instance.new("TextButton")
+infiniteStuffButton.Parent = frame
+infiniteStuffButton.Size = UDim2.new(0.8, 0, buttonHeight, 0)
+infiniteStuffButton.Position = UDim2.new(0.1, 0, 0.1 + buttonSpacing, 0)
+infiniteStuffButton.Text = "Infinite Stuff"
+
+local dupingStuffButton = Instance.new("TextButton")
+dupingStuffButton.Parent = frame
+dupingStuffButton.Size = UDim2.new(0.8, 0, buttonHeight, 0)
+dupingStuffButton.Position = UDim2.new(0.1, 0, 0.1 + 2 * buttonSpacing, 0)
+dupingStuffButton.Text = "Duping Stuff"
+
+
+local subButtonHeight = 0.1 -- Adjusted for better scaling
+local subButtonSpacing = 0.12
+
+local repairMapButton = Instance.new("TextButton")
+repairMapButton.Parent = frame
+repairMapButton.Size = UDim2.new(0.8, 0, subButtonHeight, 0)
+repairMapButton.Position = UDim2.new(0.1, 0, 0.1 + 3 * buttonSpacing, 0)
+repairMapButton.Text = "Auto Fix Maps"
+repairMapButton.Visible = false
+
+local openChestsButton = Instance.new("TextButton")
+openChestsButton.Parent = frame
+openChestsButton.Size = UDim2.new(0.8, 0, subButtonHeight, 0)
+openChestsButton.Position = UDim2.new(0.1, 0, 0.1 + 3 * buttonSpacing + subButtonSpacing, 0)
+openChestsButton.Text = "Auto Open Treasure Chests"
+openChestsButton.Visible = false
+
+
+local function toggleAutoStuff()
+    repairMapButton.Visible = not repairMapButton.Visible
+    openChestsButton.Visible = not openChestsButton.Visible
+end
+
+
+autoStuffButton.MouseButton1Click:Connect(toggleAutoStuff)
+
+
+local function autoRepairMap()
+    local p = game.Players.LocalPlayer
+    local backpack = p:WaitForChild("Backpack")
+    p.Character:SetPrimaryPartCFrame(CFrame.new(-2825.247314453125, 214.4886016845703, 1517.263427734375))
+    wait(1)
+    local npc = game.Workspace.world.npcs:FindFirstChild("Jack Marrow")
+    if npc then
+        local treasureScript = npc:FindFirstChild("treasure")
+        if treasureScript then
+            local repairMap = treasureScript:FindFirstChild("repairmap")
+            if repairMap and repairMap:IsA("RemoteFunction") then
+                for _, item in pairs(backpack:GetChildren()) do
+                    if item.Name == "Treasure Map" then
+                        item.Parent = p.Character
+                        wait(0.5)
+                        repairMap:InvokeServer(item)
+                        item.Parent = backpack
+                        wait(0.5)
+                    end
+                end
+            else
+                warn("repairmap RemoteFunction not found")
+            end
+        else
+            warn("treasure script not found")
+        end
+    else
+        warn("Jack Marrow NPC not found")
+    end
+end
+
+
+local function openChests()
+    local p = game.Players.LocalPlayer
+    local chests = game.Workspace.world.chests:GetChildren()
+    for _, chest in pairs(chests) do
+        if chest.Name:match("^TreasureChest_") and chest:FindFirstChild("ProximityPrompt") then
+            p.Character:SetPrimaryPartCFrame(chest.CFrame)
+            wait(0.7) -- Teleport confirmation time
+            p.Character.HumanoidRootPart.Anchored = true -- Freeze character
+            fireproximityprompt(chest.ProximityPrompt) -- Trigger prompt
+            wait(0.8) -- Ensure prompt is triggered
+            p.Character.HumanoidRootPart.Anchored = false -- Unfreeze character
+        end
+    end
+end
+
+
+repairMapButton.MouseButton1Click:Connect(autoRepairMap)
+openChestsButton.MouseButton1Click:Connect(openChests)
+
+
+local function makeFrameMovable(frame)
+    local dragging
+    local dragInput
+    local dragStart
+    local startPos
+
+    local function update(input)
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+end
+
+makeFrameMovable(frame)
+
+
+local UserInputService = game:GetService("UserInputService")
+local guiVisible = true
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.LeftControl and not gameProcessed then
+        guiVisible = not guiVisible
+        frame.Visible = guiVisible
+    end
+end)
